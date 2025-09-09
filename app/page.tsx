@@ -28,8 +28,8 @@ export default function Dashboard() {
   )
 
   // Señales y estadísticas - deshabilitado hasta actualización del backend
-  const signals = null
-  const stats = null
+  const signals: any = null
+  const stats: any = null
 
   useEffect(() => {
     setMounted(true)
