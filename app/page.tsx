@@ -109,10 +109,17 @@ export default function Dashboard() {
                 onClick={async () => {
                   try {
                     const res = await fetch(`${API_BASE}/api/bot/start`, { method: 'POST' })
+                    if (!res.ok) {
+                      throw new Error(`HTTP error! status: ${res.status}`)
+                    }
                     const data = await res.json()
-                    alert(data.message)
+                    console.log('Start response:', data)
+                    alert(data.message || data.status || 'Bot started successfully')
+                    // Forzar actualización del estado
+                    window.location.reload()
                   } catch (err) {
-                    alert('Error starting bot')
+                    console.error('Error starting bot:', err)
+                    alert(`Error starting bot: ${err}`)
                   }
                 }}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-medium"
@@ -123,10 +130,17 @@ export default function Dashboard() {
                 onClick={async () => {
                   try {
                     const res = await fetch(`${API_BASE}/api/bot/stop`, { method: 'POST' })
+                    if (!res.ok) {
+                      throw new Error(`HTTP error! status: ${res.status}`)
+                    }
                     const data = await res.json()
-                    alert(data.message)
+                    console.log('Stop response:', data)
+                    alert(data.message || data.status || 'Bot stopped successfully')
+                    // Forzar actualización del estado
+                    window.location.reload()
                   } catch (err) {
-                    alert('Error stopping bot')
+                    console.error('Error stopping bot:', err)
+                    alert(`Error stopping bot: ${err}`)
                   }
                 }}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-medium"
