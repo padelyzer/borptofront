@@ -27,9 +27,19 @@ export default function Dashboard() {
     }
   )
 
-  // Señales y estadísticas - deshabilitado hasta actualización del backend
-  const signals: any = null
-  const stats: any = null
+  // Obtener estado del bot
+  const { data: botStatus, error: botError } = useSWR(
+    `${API_BASE}/api/bot/status`,
+    fetcher,
+    { refreshInterval: 10000 } // Cada 10 segundos
+  )
+  
+  // Obtener señales del bot
+  const { data: botSignals, error: signalsError } = useSWR(
+    `${API_BASE}/api/bot/signals`,
+    fetcher,
+    { refreshInterval: 30000 } // Cada 30 segundos
+  )
 
   useEffect(() => {
     setMounted(true)
@@ -63,31 +73,74 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gray-800 rounded-lg p-6">
-            <h3 className="text-gray-400 text-sm">Win Rate</h3>
-            <p className="text-3xl font-bold mt-2">
-              {stats?.performance?.win_rate || '0'}%
+            <h3 className="text-gray-400 text-sm">Bot Status</h3>
+            <p className={`text-2xl font-bold mt-2 ${botStatus?.running ? 'text-green-400' : 'text-red-400'}`}>
+              {botStatus?.running ? '🟢 Running' : '🔴 Stopped'}
             </p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h3 className="text-gray-400 text-sm">Total Trades</h3>
+            <h3 className="text-gray-400 text-sm">Signals Generated</h3>
             <p className="text-3xl font-bold mt-2">
-              {stats?.performance?.total_trades || '0'}
+              {botStatus?.signals_count || '0'}
             </p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
             <h3 className="text-gray-400 text-sm">Active Signals</h3>
             <p className="text-3xl font-bold mt-2">
-              {signals?.signals?.length || '0'}
+              {botSignals?.total || '0'}
             </p>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h3 className="text-gray-400 text-sm">Uptime</h3>
+            <p className="text-lg font-bold mt-2">
+              {botStatus?.uptime ? botStatus.uptime.split('.')[0] : 'N/A'}
+            </p>
+          </div>
+        </div>
+
+        {/* Bot Control Buttons */}
+        <div className="bg-gray-800 rounded-lg p-6 mb-8">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Bot Control</h2>
+            <div className="flex gap-4">
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/api/bot/start`, { method: 'POST' })
+                    const data = await res.json()
+                    alert(data.message)
+                  } catch (err) {
+                    alert('Error starting bot')
+                  }
+                }}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-medium"
+              >
+                Start Bot
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/api/bot/stop`, { method: 'POST' })
+                    const data = await res.json()
+                    alert(data.message)
+                  } catch (err) {
+                    alert('Error stopping bot')
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-medium"
+              >
+                Stop Bot
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Signals Table */}
         <div className="bg-gray-800 rounded-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-700">
-            <h2 className="text-xl font-semibold">Live Trading Signals</h2>
+            <h2 className="text-xl font-semibold">Live Trading Signals (Real-Time)</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -114,7 +167,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
-                {signals?.signals?.map((signal: any, idx: number) => (
+                {botSignals?.signals?.map((signal: any, idx: number) => (
                   <tr key={idx} className="hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="font-medium">{signal.symbol}</span>
@@ -129,32 +182,39 @@ export default function Dashboard() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      ${signal.entry_price}
+                      ${parseFloat(signal.entry_price).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      ${signal.stop_loss}
+                      ${parseFloat(signal.stop_loss).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      ${signal.take_profit_1}
+                      ${parseFloat(signal.take_profit_1).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`text-sm font-medium ${
-                        signal.confidence === 'HIGH' 
-                          ? 'text-green-400'
-                          : signal.confidence === 'MEDIUM'
-                          ? 'text-yellow-400'
-                          : 'text-gray-400'
-                      }`}>
-                        {signal.confidence}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className={`text-sm font-medium ${
+                          signal.confidence >= 80
+                            ? 'text-green-400'
+                            : signal.confidence >= 70
+                            ? 'text-yellow-400'
+                            : 'text-gray-400'
+                        }`}>
+                          {signal.confidence}%
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          RSI: {signal.rsi?.toFixed(1)}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {(!signals?.signals || signals.signals.length === 0) && (
+            {(!botSignals?.signals || botSignals.signals.length === 0) && (
               <div className="text-center py-8 text-gray-400">
-                No active signals at the moment
+                {botStatus?.running 
+                  ? "Waiting for trading signals... (checks every 5 minutes)"
+                  : "Bot is stopped. Click 'Start Bot' to begin generating signals"}
               </div>
             )}
           </div>
