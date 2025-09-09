@@ -17,20 +17,24 @@ export default function Dashboard() {
     fetcher,
     { 
       refreshInterval: 30000, // Cada 30 segundos
-      revalidateOnFocus: false 
+      revalidateOnFocus: false,
+      onSuccess: (data) => {
+        console.log('Health check success:', data)
+      },
+      onError: (error) => {
+        console.log('Health check error:', error.message)
+      }
     }
   )
 
-  // Obtener señales - temporalmente deshabilitado mientras se actualiza el backend
+  // Señales y estadísticas - deshabilitado hasta actualización del backend
   const signals = null
-  const signalsError = null
-
-  // Obtener estadísticas - temporalmente deshabilitado mientras se actualiza el backend
   const stats = null
-  const statsError = null
 
   useEffect(() => {
     setMounted(true)
+    // Log inicial para debug
+    console.log('Dashboard mounted. API_BASE:', API_BASE)
   }, [])
 
   if (!mounted) return null
@@ -44,9 +48,9 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">BotPro Trading Dashboard</h1>
             <div className="flex items-center space-x-4">
               <span className={`px-3 py-1 rounded-full text-sm ${
-                health?.status === 'online' ? 'bg-green-500' : 'bg-red-500'
+                health && health.status === 'online' ? 'bg-green-500' : 'bg-red-500'
               }`}>
-                {health?.status === 'online' ? 'Connected' : 'Disconnected'}
+                {health && health.status === 'online' ? 'Connected' : 'Disconnected'}
               </span>
               <span className="text-sm text-gray-400">
                 Last update: {new Date().toLocaleTimeString()}
