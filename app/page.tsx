@@ -6,26 +6,10 @@ import axios from 'axios'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://botpro-2p7g.onrender.com'
 
-const fetcher = (url: string) => {
-  console.log('Fetching:', url)
-  return axios.get(url)
-    .then(res => {
-      console.log('Response:', res.data)
-      return res.data
-    })
-    .catch(err => {
-      console.error('Error fetching:', err)
-      throw err
-    })
-}
+const fetcher = (url: string) => axios.get(url).then(res => res.data)
 
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
-  
-  // Debug API URL
-  useEffect(() => {
-    console.log('API_BASE:', API_BASE)
-  }, [])
   
   // Mantener el backend activo con polling cada 30 segundos
   const { data: health, error: healthError } = useSWR(
@@ -173,14 +157,25 @@ export default function Dashboard() {
         </div>
 
         {/* Status Message */}
-        <div className="mt-6 bg-blue-900 bg-opacity-50 border border-blue-500 rounded-lg p-4">
-          <p className="text-blue-300">
-            ✅ Keep-Alive activo: El backend se mantiene activo con polling cada 30 segundos.
-          </p>
-          <p className="text-blue-300 text-sm mt-2">
-            Estado del backend: {health?.status || 'Conectando...'} | Bot: {health?.bot_status || 'N/A'}
-          </p>
-        </div>
+        {health && !healthError && (
+          <div className="mt-6 bg-green-900 bg-opacity-50 border border-green-500 rounded-lg p-4">
+            <p className="text-green-300">
+              ✅ Keep-Alive funcionando: El backend se mantiene activo con polling cada 30 segundos.
+            </p>
+            <p className="text-green-300 text-sm mt-2">
+              Estado del backend: {health?.status || 'Conectando...'} | Bot: {health?.bot_status || 'N/A'} | Versión: {health?.version || 'N/A'}
+            </p>
+          </div>
+        )}
+        
+        {/* Error Message - Solo si hay error real de conexión */}
+        {healthError && (
+          <div className="mt-6 bg-red-900 bg-opacity-50 border border-red-500 rounded-lg p-4">
+            <p className="text-red-300">
+              Error conectando al backend. Reintentando...
+            </p>
+          </div>
+        )}
       </main>
     </div>
   )
