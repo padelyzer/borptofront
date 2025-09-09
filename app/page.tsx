@@ -6,10 +6,26 @@ import axios from 'axios'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://botpro-2p7g.onrender.com'
 
-const fetcher = (url: string) => axios.get(url).then(res => res.data)
+const fetcher = (url: string) => {
+  console.log('Fetching:', url)
+  return axios.get(url)
+    .then(res => {
+      console.log('Response:', res.data)
+      return res.data
+    })
+    .catch(err => {
+      console.error('Error fetching:', err)
+      throw err
+    })
+}
 
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
+  
+  // Debug API URL
+  useEffect(() => {
+    console.log('API_BASE:', API_BASE)
+  }, [])
   
   // Mantener el backend activo con polling cada 30 segundos
   const { data: health, error: healthError } = useSWR(
