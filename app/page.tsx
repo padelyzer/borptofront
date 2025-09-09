@@ -13,7 +13,7 @@ export default function Dashboard() {
   
   // Mantener el backend activo con polling cada 30 segundos
   const { data: health, error: healthError } = useSWR(
-    `${API_BASE}/health`,
+    `${API_BASE}/`,
     fetcher,
     { 
       refreshInterval: 30000, // Cada 30 segundos
@@ -21,19 +21,13 @@ export default function Dashboard() {
     }
   )
 
-  // Obtener señales
-  const { data: signals, error: signalsError } = useSWR(
-    `${API_BASE}/api/signals/enhanced`,
-    fetcher,
-    { refreshInterval: 60000 } // Cada minuto
-  )
+  // Obtener señales - temporalmente deshabilitado mientras se actualiza el backend
+  const signals = null
+  const signalsError = null
 
-  // Obtener estadísticas
-  const { data: stats, error: statsError } = useSWR(
-    `${API_BASE}/api/stats`,
-    fetcher,
-    { refreshInterval: 120000 } // Cada 2 minutos
-  )
+  // Obtener estadísticas - temporalmente deshabilitado mientras se actualiza el backend
+  const stats = null
+  const statsError = null
 
   useEffect(() => {
     setMounted(true)
@@ -50,9 +44,9 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">BotPro Trading Dashboard</h1>
             <div className="flex items-center space-x-4">
               <span className={`px-3 py-1 rounded-full text-sm ${
-                health ? 'bg-green-500' : 'bg-red-500'
+                health?.status === 'online' ? 'bg-green-500' : 'bg-red-500'
               }`}>
-                {health ? 'Connected' : 'Disconnected'}
+                {health?.status === 'online' ? 'Connected' : 'Disconnected'}
               </span>
               <span className="text-sm text-gray-400">
                 Last update: {new Date().toLocaleTimeString()}
@@ -162,14 +156,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Error Messages */}
-        {(healthError || signalsError || statsError) && (
-          <div className="mt-6 bg-red-900 bg-opacity-50 border border-red-500 rounded-lg p-4">
-            <p className="text-red-300">
-              Error connecting to backend. Retrying...
-            </p>
-          </div>
-        )}
+        {/* Status Message */}
+        <div className="mt-6 bg-blue-900 bg-opacity-50 border border-blue-500 rounded-lg p-4">
+          <p className="text-blue-300">
+            ✅ Keep-Alive activo: El backend se mantiene activo con polling cada 30 segundos.
+          </p>
+          <p className="text-blue-300 text-sm mt-2">
+            Estado del backend: {health?.status || 'Conectando...'} | Bot: {health?.bot_status || 'N/A'}
+          </p>
+        </div>
       </main>
     </div>
   )
