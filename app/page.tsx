@@ -30,16 +30,16 @@ export default function Dashboard() {
     }
   )
 
-  // Obtener estado del bot
+  // Obtener estado del bot desde el endpoint principal
   const { data: botStatus, error: botError } = useSWR(
-    `${API_BASE}/api/bot/status`,
+    `${API_BASE}/`,
     fetcher,
     { refreshInterval: 10000 } // Cada 10 segundos
   )
   
-  // Obtener señales del bot
+  // Obtener señales del bot desde endpoint disponible
   const { data: botSignals, error: signalsError } = useSWR(
-    `${API_BASE}/api/bot/signals`,
+    `${API_BASE}/api/signals/enhanced`,
     fetcher,
     { refreshInterval: 30000 } // Cada 30 segundos
   )
@@ -62,14 +62,15 @@ export default function Dashboard() {
 
   // Detectar nuevas señales y activar alertas
   useEffect(() => {
-    if (botSignals?.total && botSignals.total > lastSignalCount && lastSignalCount > 0) {
+    const currentCount = botSignals?.signals?.length || 0
+    if (currentCount > lastSignalCount && lastSignalCount > 0) {
       // Nueva señal detectada
       playAlertSound()
       showNotification(botSignals.signals[0])
       console.log('🚨 Nueva señal detectada!')
     }
-    setLastSignalCount(botSignals?.total || 0)
-  }, [botSignals?.total, lastSignalCount])
+    setLastSignalCount(currentCount)
+  }, [botSignals?.signals?.length, lastSignalCount])
 
   const playAlertSound = () => {
     if (audioRef.current) {
@@ -124,8 +125,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gray-800 rounded-lg p-6">
             <h3 className="text-gray-400 text-sm">Bot Status</h3>
-            <p className={`text-2xl font-bold mt-2 ${botStatus?.running ? 'text-green-400' : 'text-red-400'}`}>
-              {botStatus?.running ? '🟢 Running' : '🔴 Stopped'}
+            <p className={`text-2xl font-bold mt-2 ${botStatus?.bot_status === 'running' ? 'text-green-400' : 'text-red-400'}`}>
+              {botStatus?.bot_status === 'running' ? '🟢 Running' : '🔴 Stopped'}
             </p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
@@ -137,7 +138,7 @@ export default function Dashboard() {
           <div className="bg-gray-800 rounded-lg p-6">
             <h3 className="text-gray-400 text-sm">Active Signals</h3>
             <p className="text-3xl font-bold mt-2">
-              {botSignals?.total || '0'}
+              {botSignals?.signals?.length || '0'}
             </p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
@@ -154,9 +155,9 @@ export default function Dashboard() {
             <h2 className="text-xl font-semibold">System Status</h2>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${botStatus?.running ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+                <div className={`w-3 h-3 rounded-full ${botStatus?.bot_status === 'running' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
                 <span className="text-sm">
-                  {botStatus?.running ? 'Bot Running Automatically' : 'System Initializing...'}
+                  {botStatus?.bot_status === 'running' ? 'Bot Running Automatically' : 'System Initializing...'}
                 </span>
               </div>
               {notificationsEnabled && (
@@ -246,7 +247,7 @@ export default function Dashboard() {
             </table>
             {(!botSignals?.signals || botSignals.signals.length === 0) && (
               <div className="text-center py-8 text-gray-400">
-                {botStatus?.running 
+                {botStatus?.bot_status === 'running' 
                   ? "Waiting for trading signals... (checks every 5 minutes)"
                   : "Bot is stopped. Click 'Start Bot' to begin generating signals"}
               </div>
