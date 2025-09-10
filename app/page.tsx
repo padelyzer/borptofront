@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import useSWR from 'swr'
 import axios from 'axios'
 
@@ -10,6 +10,9 @@ const fetcher = (url: string) => axios.get(url).then(res => res.data)
 
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
+  const [lastSignalCount, setLastSignalCount] = useState(0)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
   
   // Mantener el backend activo con polling cada 30 segundos
   const { data: health, error: healthError } = useSWR(
@@ -45,12 +48,57 @@ export default function Dashboard() {
     setMounted(true)
     // Log inicial para debug
     console.log('Dashboard mounted. API_BASE:', API_BASE)
+    
+    // Pedir permisos para notificaciones
+    if ('Notification' in window) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          setNotificationsEnabled(true)
+          console.log('Notificaciones habilitadas')
+        }
+      })
+    }
   }, [])
+
+  // Detectar nuevas señales y activar alertas
+  useEffect(() => {
+    if (botSignals?.total && botSignals.total > lastSignalCount && lastSignalCount > 0) {
+      // Nueva señal detectada
+      playAlertSound()
+      showNotification(botSignals.signals[0])
+      console.log('🚨 Nueva señal detectada!')
+    }
+    setLastSignalCount(botSignals?.total || 0)
+  }, [botSignals?.total, lastSignalCount])
+
+  const playAlertSound = () => {
+    if (audioRef.current) {
+      audioRef.current.play().catch(e => console.log('No se pudo reproducir sonido:', e))
+    }
+  }
+
+  const showNotification = (signal: any) => {
+    if (notificationsEnabled && 'Notification' in window) {
+      const title = `🚨 Nueva Señal: ${signal.symbol}`
+      const body = `${signal.signal_type} - Entrada: $${parseFloat(signal.entry_price).toFixed(2)}`
+      
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+        requireInteraction: true,
+        tag: 'trading-signal'
+      })
+    }
+  }
 
   if (!mounted) return null
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      {/* Audio oculto para alertas */}
+      <audio ref={audioRef} preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEbBjeL0u7Qfy0FK3rG7+QGQAB8FEsLS8h" type="audio/wav" />
+      </audio>
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -100,53 +148,25 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Bot Control Buttons */}
+        {/* System Status */}
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Bot Control</h2>
-            <div className="flex gap-4">
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await fetch(`${API_BASE}/api/bot/start`, { method: 'POST' })
-                    if (!res.ok) {
-                      throw new Error(`HTTP error! status: ${res.status}`)
-                    }
-                    const data = await res.json()
-                    console.log('Start response:', data)
-                    alert(data.message || data.status || 'Bot started successfully')
-                    // Forzar actualización del estado
-                    window.location.reload()
-                  } catch (err) {
-                    console.error('Error starting bot:', err)
-                    alert(`Error starting bot: ${err}`)
-                  }
-                }}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-medium"
-              >
-                Start Bot
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await fetch(`${API_BASE}/api/bot/stop`, { method: 'POST' })
-                    if (!res.ok) {
-                      throw new Error(`HTTP error! status: ${res.status}`)
-                    }
-                    const data = await res.json()
-                    console.log('Stop response:', data)
-                    alert(data.message || data.status || 'Bot stopped successfully')
-                    // Forzar actualización del estado
-                    window.location.reload()
-                  } catch (err) {
-                    console.error('Error stopping bot:', err)
-                    alert(`Error stopping bot: ${err}`)
-                  }
-                }}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-medium"
-              >
-                Stop Bot
-              </button>
+            <h2 className="text-xl font-semibold">System Status</h2>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${botStatus?.running ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+                <span className="text-sm">
+                  {botStatus?.running ? 'Bot Running Automatically' : 'System Initializing...'}
+                </span>
+              </div>
+              {notificationsEnabled && (
+                <div className="flex items-center gap-2 text-green-400">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                  </svg>
+                  <span className="text-xs">Alerts ON</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
